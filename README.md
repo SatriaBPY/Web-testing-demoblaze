@@ -1,7 +1,7 @@
 # Web & API Automation Testing (DEMOBLAZE)
  
 ## Overview
-This project is a modular web automation testing framework built with [Playwright](https://playwright.dev/) for end-to-end (E2E) and API testing. It integrates API-based user data fetching to ensure fresh and up-to-date information for the demoblaze.com  web application. The framework is designed with scalability, maintainability, and ease of use in mind, making it suitable for QA engineers and developers.
+This project is a modular web automation testing framework built with Playwright for both end-to-end (E2E) and API testing. It integrates API-based user data fetching to ensure fresh and up-to-date information for the demoblaze.com  web application. The framework also provides custom reporting features, making logs easier to understand and analyze. In addition, it demonstrates best practices for global setup integration, ensuring consistent test environments across runs. Designed with scalability, maintainability, and ease of use in mind, it is well-suited for QA engineers and developers.
  
 ## Features
 - **UI and API Automation**: Test both frontend and backend workflows.
