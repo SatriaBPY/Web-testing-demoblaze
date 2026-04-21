@@ -40,7 +40,7 @@ pipeline {
 
         stage('Publish Report') {
             steps {
-               allure includeProperties: false, jdk: '', resultPolicy: 'LEAVE_AS_IS', results: [[path: 'allure-results']]
+               allure allureVersion: '3', commandline: 'allure-cli', includeProperties: false, jdk: '', resultPolicy: 'LEAVE_AS_IS', results: [[path: 'allure-results']]
             }
         }
     }
