@@ -1,6 +1,6 @@
 
 
-FROM dockerhub/node:20-slim
+FROM node:20-slim
 
 ARG SCRIPT
 ENV CALL=$SCRIPT
