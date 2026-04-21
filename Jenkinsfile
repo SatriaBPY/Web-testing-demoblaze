@@ -41,7 +41,7 @@ pipeline {
         stage('Publish Report') {
             steps {
                 allure includeProperties: false,
-                       results: [[path: 'playwright-report']]
+                       results: [[path: 'allure-report']]
             }
         }
     }
