@@ -42,7 +42,7 @@ export async function deleteFolder(filePAth: string) {
       return;
     }
 
-    await fsx.rm(filePAth, { recursive: true });
+    await fsx.rm(filePath, { recursive: true, force: true, maxRetries: 3 });
   } catch (err) {
     console.error(err, "Skipping deletion");
   }
