@@ -31,11 +31,13 @@ pipeline {
 
         stage('Run Playwright Tests in Container') {
             steps {
-                sh '''
-                docker run --rm sbpy/playwright-tests:latest \
-                npx playwright test --reporter=line
-                '''
-            }
+        sh """
+        docker run --rm \
+          -v $WORKSPACE/allure-results:/app/allure-results \
+          sbpy/playwright-tests:latest \
+          npx playwright test --reporter=line --reporter=allure-playwright
+        """
+    }
         }
 
         stage('Publish Report') {
