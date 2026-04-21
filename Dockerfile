@@ -1,5 +1,4 @@
-
-
+# ini dapet dari dockerhub
 FROM node:20-slim
 
 ARG SCRIPT
