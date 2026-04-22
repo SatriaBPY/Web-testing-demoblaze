@@ -57,7 +57,7 @@ pipeline {
                 allure commandline: 'allure-cli', 
                        includeProperties: false, 
                        jdk: '', 
-                       resultPolicy: 'ALWAYS',
+                       resultPolicy: 'LEAVE_AS_IS',
                        results: [[path: 'allure-results']]
             }
         }
