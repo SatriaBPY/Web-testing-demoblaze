@@ -35,57 +35,46 @@ stages {
         }
     }
 
-    stage('Wait & Validate Workflow') {
+   stage('Wait & Validate Workflow') {
         steps {
             script {
-                echo "⏳ Waiting for workflow..."
-    
-                // ambil waktu trigger (UTC ISO format)
-                def startTime = sh(
-                    script: "date -u +%Y-%m-%dT%H:%M:%SZ",
-                    returnStdout: true
-                ).trim()
-    
-                echo "Start Time: ${startTime}"
+                echo "⏳ Waiting for workflow run..."
     
                 def runId = null
     
-                // cari run yang dibuat setelah trigger
-                for (int i = 0; i < 60; i++) {
-    
+                // 1) Ambil run terbaru untuk workflow ini (by file name)
+                for (int i = 0; i < 30; i++) {
                     runId = sh(
-                        script: """
-                            curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-                            "${GITHUB_API_URL}/actions/runs?event=workflow_dispatch&per_page=5" \
-                            | jq -r '.workflow_runs[]
-                            | select(.created_at >= "${startTime}")
-                            | .id' | head -1
-                        """,
+                        script: '''
+                            curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+                            "$GITHUB_API_URL/actions/workflows/playwright-test.yml/runs?event=workflow_dispatch&per_page=1" \
+                            | jq -r '.workflow_runs[0].id // empty'
+                        ''',
                         returnStdout: true
                     ).trim()
     
                     if (runId) break
     
-                    echo "⏳ Run belum ketemu, retry..."
-                    sleep 5
+                    echo "⏳ Run belum muncul, retry..."
+                    sleep 3
                 }
     
                 if (!runId) {
-                    error "❌ Run tidak ditemukan setelah trigger"
+                    error "❌ Tidak bisa menemukan run workflow"
                 }
     
                 env.GITHUB_RUN_ID = runId
                 echo "✅ Found Run ID: ${runId}"
     
-                // tunggu sampai selesai
-                for (int i = 0; i < 60; i++) {
+                // 2) Poll status sampai selesai
+                for (int i = 0; i < 90; i++) {
     
                     def result = sh(
-                        script: """
-                            curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-                            "${GITHUB_API_URL}/actions/runs/${runId}" \
+                        script: '''
+                            curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+                            "$GITHUB_API_URL/actions/runs/$GITHUB_RUN_ID" \
                             | jq -r '.status + "|" + (.conclusion // "pending")'
-                        """,
+                        ''',
                         returnStdout: true
                     ).trim()
     
