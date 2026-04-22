@@ -1,190 +1,187 @@
 pipeline {
-agent any
-
-environment {
-    GITHUB_TOKEN = credentials('github-token-actions')
-    GITHUB_OWNER = 'SatriaBPY'
-    GITHUB_REPO = 'Web-testing-demoblaze'
-    GITHUB_API_URL = "https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}"
-}
-
-stages {
-
-    stage('Get Latest Run Number') {
-        steps {
-            script {
-                def beforeRunNumber = sh(
-                    script: """
-                        curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-                        "${GITHUB_API_URL}/actions/workflows/playwright-test.yml/runs?per_page=1" \
-                        | jq -r '.workflow_runs[0].run_number // 0'
-                    """,
-                    returnStdout: true
-                ).trim()
-
-                env.BEFORE_RUN_NUMBER = beforeRunNumber
-                echo "Before run number: ${beforeRunNumber}"
-            }
-        }
+    agent any
+    
+    environment {
+        GITHUB_TOKEN = credentials('github-token-actions')
+        GITHUB_OWNER = 'SatriaBPY'
+        GITHUB_REPO = 'Web-testing-demoblaze'
+        GITHUB_API_URL = "https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}"
     }
-
-    stage('Trigger GitHub Actions') {
-        steps {
-            script {
-                def triggerId = UUID.randomUUID().toString()
-                env.TRIGGER_ID = triggerId
     
-                echo "🚀 Triggering workflow with ID: ${triggerId}"
-    
-                sh """
-                    curl -s -X POST \\
-                    -H "Accept: application/vnd.github+json" \\
-                    -H "Authorization: Bearer ${GITHUB_TOKEN}" \\
-                    "${GITHUB_API_URL}/actions/workflows/playwright-test.yml/dispatches" \\
-                    -d '{
-                        "ref": "main",
-                        "inputs": {
-                            "branch": "main",
-                            "trigger_id": "${triggerId}"
-                        }
-                    }'
-                """
-            }
-        }
-    }
-
-    stage('Wait & Validate Workflow') {
-        steps {
-            script {
-                echo "⏳ Waiting for NEW workflow run..."
-
-                def runId = null
-
-                for (int i = 0; i < 60; i++) {
-
-                    runId = sh(
-                        script: """
-                            curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-                            "${GITHUB_API_URL}/actions/workflows/playwright-test.yml/runs?event=workflow_dispatch&per_page=5" \
-                            | jq -r '.workflow_runs[]
-                            | select(.run_number > ${env.BEFORE_RUN_NUMBER})
-                            | .id' | head -1
-                        """,
-                        returnStdout: true
-                    ).trim()
-
-                    if (runId) break
-
-                    echo "⏳ Waiting new run..."
-                    sleep 5
-                }
-
-                if (!runId) {
-                    error "❌ Run baru tidak ditemukan"
-                }
-
-                env.GITHUB_RUN_ID = runId
-                echo "✅ Found NEW Run ID: ${runId}"
-
-                for (int i = 0; i < 90; i++) {
-
-                    def result = sh(
-                        script: """
-                            curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-                            "${GITHUB_API_URL}/actions/runs/${runId}" \
-                            | jq -r '.status + "|" + (.conclusion // "pending")'
-                        """,
-                        returnStdout: true
-                    ).trim()
-
-                    def parts = result.tokenize('|')
-                    def status = parts[0]
-                    def conclusion = parts.size() > 1 ? parts[1].trim() : "pending"
-
-                    echo "Status: ${status}, Conclusion: ${conclusion}"
-
-                    if (status == "completed") {
-
-                        if (conclusion != "success") {
-                            error "❌ Test failed: ${conclusion}"
-                        }
-
-                        echo "✅ Test passed"
-                        return
-                    }
-
-                    sleep 10
-                }
-
-                error "❌ Timeout waiting workflow"
-            }
-        }
-    }
-
-    stage('Download All Artifacts') {
-        steps {
-            script {
-                sh "rm -rf allure-results && mkdir allure-results"
-    
-                def urls = sh(
-                    script: '''
-                        curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
-                        "$GITHUB_API_URL/actions/runs/$GITHUB_RUN_ID/artifacts" \
-                        | jq -r '.artifacts[].archive_download_url'
-                    ''',
-                    returnStdout: true
-                ).trim().split("\n")
-    
-                for (u in urls) {
-                    echo "Downloading artifact: ${u}"
-    
-                    sh """
-                        curl -L -H "Authorization: Bearer ${GITHUB_TOKEN}" -o artifact.zip "${u}"
-                        unzip -o artifact.zip -d allure-results/
-                        rm artifact.zip
-                    """
-                }
-    
-                sh "ls -la allure-results"
-            }
-        }
-    }
-
-
-    stage('Publish Allure Report') {
+    stages {
+        stage('Get Latest Run Number') {
             steps {
                 script {
-                    echo "📊 Publishing Allure report..."
-
-                    sh "ls -la ${WORKSPACE}/allure-results/ || true"
-
-                    // Publish report
-                    allure commandline: 'allure-cli',
-                           includeProperties: false,
-                           jdk: '',
-                           resultPolicy: 'LEAVE_AS_IS',
-                           results: [[path: 'allure-results']]
-
-                    echo "✅ Allure report published"
+                    def beforeRunNumber = sh(
+                        script: """
+                            curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                            "${GITHUB_API_URL}/actions/workflows/playwright-test.yml/runs?per_page=1" \
+                            | jq -r '.workflow_runs[0].run_number // 0'
+                        """,
+                        returnStdout: true
+                    ).trim()
+    
+                    env.BEFORE_RUN_NUMBER = beforeRunNumber
+                    echo "Before run number: ${beforeRunNumber}"
                 }
             }
         }
-    }
-
-    post {
-        always {
-            script {
-                echo "🧹 Cleaning up workspace..."
-                // Optional: archive results untuk debugging
+    
+        stage('Trigger GitHub Actions') {
+            steps {
+                script {
+                    def triggerId = UUID.randomUUID().toString()
+                    env.TRIGGER_ID = triggerId
+        
+                    echo "🚀 Triggering workflow with ID: ${triggerId}"
+        
+                    sh """
+                        curl -s -X POST \\
+                        -H "Accept: application/vnd.github+json" \\
+                        -H "Authorization: Bearer ${GITHUB_TOKEN}" \\
+                        "${GITHUB_API_URL}/actions/workflows/playwright-test.yml/dispatches" \\
+                        -d '{
+                            "ref": "main",
+                            "inputs": {
+                                "branch": "main",
+                                "trigger_id": "${triggerId}"
+                            }
+                        }'
+                    """
+                }
             }
         }
-
-        success {
-            echo "🎉 Pipeline completed successfully!"
+    
+        stage('Wait & Validate Workflow') {
+            steps {
+                script {
+                    echo "⏳ Waiting for NEW workflow run..."
+    
+                    def runId = null
+    
+                    for (int i = 0; i < 60; i++) {
+    
+                        runId = sh(
+                            script: """
+                                curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                                "${GITHUB_API_URL}/actions/workflows/playwright-test.yml/runs?event=workflow_dispatch&per_page=5" \
+                                | jq -r '.workflow_runs[]
+                                | select(.run_number > ${env.BEFORE_RUN_NUMBER})
+                                | .id' | head -1
+                            """,
+                            returnStdout: true
+                        ).trim()
+    
+                        if (runId) break
+    
+                        echo "⏳ Waiting new run..."
+                        sleep 5
+                    }
+    
+                    if (!runId) {
+                        error "❌ Run baru tidak ditemukan"
+                    }
+    
+                    env.GITHUB_RUN_ID = runId
+                    echo "✅ Found NEW Run ID: ${runId}"
+    
+                    for (int i = 0; i < 90; i++) {
+    
+                        def result = sh(
+                            script: """
+                                curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                                "${GITHUB_API_URL}/actions/runs/${runId}" \
+                                | jq -r '.status + "|" + (.conclusion // "pending")'
+                            """,
+                            returnStdout: true
+                        ).trim()
+    
+                        def parts = result.tokenize('|')
+                        def status = parts[0]
+                        def conclusion = parts.size() > 1 ? parts[1].trim() : "pending"
+    
+                        echo "Status: ${status}, Conclusion: ${conclusion}"
+    
+                        if (status == "completed") {
+    
+                            if (conclusion != "success") {
+                                error "❌ Test failed: ${conclusion}"
+                            }
+    
+                            echo "✅ Test passed"
+                            return
+                        }
+    
+                        sleep 5
+                    }
+    
+                    error "❌ Timeout waiting workflow"
+                }
+            }
         }
-
-        failure {
-            echo "❌ Pipeline failed, but Allure report might still be available"
+    
+        stage('Download All Artifacts') {
+            steps {
+                script {
+                    sh "rm -rf allure-results && mkdir allure-results"
+        
+                    def urls = sh(
+                        script: '''
+                            curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+                            "$GITHUB_API_URL/actions/runs/$GITHUB_RUN_ID/artifacts" \
+                            | jq -r '.artifacts[].archive_download_url'
+                        ''',
+                        returnStdout: true
+                    ).trim().split("\n")
+        
+                    for (u in urls) {
+                        echo "Downloading artifact: ${u}"
+        
+                        sh """
+                            curl -L -H "Authorization: Bearer ${GITHUB_TOKEN}" -o artifact.zip "${u}"
+                            unzip -o artifact.zip -d allure-results/
+                            rm artifact.zip
+                        """
+                    }
+        
+                }
+            }
         }
-    }
+    
+    
+        stage('Publish Allure Report') {
+                steps {
+                    script {
+                        echo "📊 Publishing Allure report..."
+    
+                        sh "ls -la ${WORKSPACE}/allure-results/ || true"
+    
+                        allure commandline: 'allure-cli',
+                            includeProperties: false,
+                            jdk: '',
+                            resultPolicy: 'LEAVE_AS_IS',
+                            results: [[path: 'allure-results']]
+    
+                        echo "✅ Allure report published"
+                    }
+                }
+            }
+        }
+    
+        post {
+            always {
+                script {
+                    echo "🧹 Cleaning up workspace..."
+                    // Optional: archive results untuk debugging
+                }
+            }
+    
+            success {
+                echo "🎉 Pipeline completed successfully!"
+            }
+    
+            failure {
+                echo "❌ Pipeline failed, but Allure report might still be available"
+            }
+        }
 }
