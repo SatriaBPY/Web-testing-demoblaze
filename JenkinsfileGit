@@ -152,7 +152,7 @@ pipeline {
         stage('Publish Allure Report') {
                 steps {
                     script {
-                        echo "📊 Publishing Allure report...
+                        echo "📊 Publishing Allure report..."
     
                         allure commandline: 'allure-cli',
                             includeProperties: false,
