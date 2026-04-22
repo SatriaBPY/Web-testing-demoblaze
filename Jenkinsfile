@@ -31,25 +31,45 @@ pipeline {
 
         stage('Run Playwright Tests in Container') {
             steps {
-        sh """
-        docker run --rm \
-          -v $WORKSPACE/allure-results:/app/allure-results \
-          sbpy/playwright-tests:latest \
-          npx playwright test --reporter=line --reporter=allure-playwright
-        """
-    }
+                script {
+                   
+                    sh """
+                        echo "Cleaning allure-results folder..."
+                        rm -rf ${WORKSPACE}/allure-results
+                        mkdir -p ${WORKSPACE}/allure-results
+                        rm -rf ${WORKSPACE}/src/data/users.json
+                        mkdir -p ${WORKSPACE}/src/data
+                    """
+                    
+                   
+                    sh """
+                        docker run --rm \
+                          -v ${WORKSPACE}/allure-results:/app/allure-results \
+                          -v ${WORKSPACE}/src/data:/app/src/data \
+                          sbpy/playwright-tests:latest
+                    """
+                }
+            }
         }
 
-        stage('Publish Report') {
+        stage('Publish Allure Report') {
             steps {
-               allure commandline: 'allure-cli', includeProperties: false, jdk: '', resultPolicy: 'LEAVE_AS_IS', results: [[path: 'allure-results']]
+                allure commandline: 'allure-cli', 
+                       includeProperties: false, 
+                       jdk: '', 
+                       resultPolicy: 'ALWAYS',
+                       results: [[path: 'allure-results']]
             }
         }
     }
 
     post {
         always {
-            cleanWs() 
+            script {
+                echo "Tests completed, cleaning up..."
+                sleep time: 3, unit: 'SECONDS'
+                cleanWs()
+            }
         }
     }
 }
