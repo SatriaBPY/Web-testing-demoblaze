@@ -126,17 +126,24 @@ stages {
             script {
                 sh "rm -rf allure-results && mkdir allure-results"
     
-                sh """
-                    curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" \\
-                    "${GITHUB_API_URL}/actions/runs/${env.GITHUB_RUN_ID}/artifacts" \\
-                    | jq -r '.artifacts[].archive_download_url' \\
-                    | while read url; do
-                        echo "Downloading artifact..."
-                        curl -L -H "Authorization: Bearer ${GITHUB_TOKEN}" -o artifact.zip "\\\$url"
+                def urls = sh(
+                    script: '''
+                        curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+                        "$GITHUB_API_URL/actions/runs/$GITHUB_RUN_ID/artifacts" \
+                        | jq -r '.artifacts[].archive_download_url'
+                    ''',
+                    returnStdout: true
+                ).trim().split("\n")
+    
+                for (u in urls) {
+                    echo "Downloading artifact: ${u}"
+    
+                    sh """
+                        curl -L -H "Authorization: Bearer ${GITHUB_TOKEN}" -o artifact.zip "${u}"
                         unzip -o artifact.zip -d allure-results/
                         rm artifact.zip
-                    done
-                """
+                    """
+                }
     
                 sh "ls -la allure-results"
             }
