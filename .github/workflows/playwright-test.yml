@@ -26,17 +26,20 @@ jobs:
       - name: Pull Docker image from Docker Hub
         run: docker pull sbpy/playwright-tests:latest
 
-      - name: Run Playwright tests
+      - name: Run Playwright tests with sharding
         run: |
-          docker run --rm \
-                      -v ${{ github.workspace }}/allure-results:/app/allure-results \
-                      -v ${{ github.workspace }}/tests:/app/tests \
-                      -v ${{ github.workspace }}/src:/app/src \
-                      -v ${{ github.workspace }}/setup:/app/setup \
-                      -v ${{ github.workspace }}/reporter:/app/reporter \
-                      -v ${{ github.workspace }}/playwright.config.ts:/app/playwright.config.ts \
-                      sbpy/playwright-tests:latest \
-        continue-on-error: true
+          # Jalankan 4 shard secara berurutan (bukan paralel)
+          for shard in 1 2 3 4; do
+            docker run --rm \
+              -v ${{ github.workspace }}/allure-results:/app/allure-results \
+              -v ${{ github.workspace }}/tests:/app/tests \
+              -v ${{ github.workspace }}/src:/app/src \
+              -v ${{ github.workspace }}/setup:/app/setup \
+              -v ${{ github.workspace }}/reporter:/app/reporter \
+              -v ${{ github.workspace }}/playwright.config.ts:/app/playwright.config.ts \
+              sbpy/playwright-tests:latest \
+              sh -c "npx playwright test --shard=$shard/4 --reporter=line || true"
+          done
 
       - name: List results (debugging)
         run: ls -la allure-results/
