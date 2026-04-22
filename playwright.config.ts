@@ -3,7 +3,7 @@ import { dateTimeExecution } from "./src/helper/utils";
 import { addAbortListener } from "node:stream";
 
 const time = dateTimeExecution()
-const tgl = time.bulan
+const tgl = time.tgl
 const bulan = time.bulan
 const tahun = time.tahun
 
@@ -60,7 +60,7 @@ export default defineConfig({
   /* Configure projects for major browsers */
   projects: [
     {
-      name: `Regression ${tgl}.${bulan}.${tahun}}`,
+      name: `Regression ${tgl}.${bulan}.${tahun}`,
       use: { ...devices["Desktop Chrome"] },
     },
 
