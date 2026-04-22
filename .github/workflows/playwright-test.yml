@@ -32,7 +32,9 @@ jobs:
                       -v ${{ github.workspace }}/allure-results:/app/allure-results \
                       -v ${{ github.workspace }}/tests:/app/tests \
                       -v ${{ github.workspace }}/src:/app/src \
-                      -v ${{ github.workspace }}/playwright.config.js:/app/playwright.config.js \
+                      -v ${{ github.workspace }}/setup:/app/setup \
+                      -v ${{ github.workspace }}/reporter:/app/reporter \
+                      -v ${{ github.workspace }}/playwright.config.ts:/app/playwright.config.ts \
                       sbpy/playwright-tests:latest \
         continue-on-error: true
 
