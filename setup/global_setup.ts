@@ -21,7 +21,7 @@ async function globalSetup(config: FullConfig) {
     console.log("===== Prepaering =====");
     
     console.log("Prepaering ....Looking for folders");
-    await deleteFolder('allure-results');
+    // await deleteFolder('allure-results');
     await deleteFolder('./src/data/users.json');
     const browser = await chromium.launch({
       headless: true,
