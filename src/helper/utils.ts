@@ -80,3 +80,13 @@ export async function saveJsonFile(data: any, pathFile: string) {
     throw err;
   }
 }
+
+export async function dateTimeExecution() {
+  const date = new Date();
+  const tahun = date.getFullYear();
+  const bulan = date.getMonth();
+  const tgl = date.getDay();
+  
+  return {tgl, bulan, tahun}
+  
+}

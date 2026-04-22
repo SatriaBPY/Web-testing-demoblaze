@@ -107,11 +107,11 @@ pipeline {
                     script {
                         echo "📥 Downloading artifacts from run ID: ${env.GITHUB_RUN_ID}"
 
-                        // Bersihkan folder lama
+                       
                         sh "rm -rf ${WORKSPACE}/allure-results"
                         sh "mkdir -p ${WORKSPACE}/allure-results"
 
-                        // Download artifact
+                       
                         sh """
                             curl -L \
                                 -H "Accept: application/vnd.github+json" \

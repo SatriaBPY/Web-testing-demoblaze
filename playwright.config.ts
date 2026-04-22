@@ -1,5 +1,11 @@
 import { defineConfig, devices } from "@playwright/test";
-import { title } from "process";
+import { dateTimeExecution } from "./src/helper/utils";
+import { addAbortListener } from "node:stream";
+
+const time = await dateTimeExecution()
+const tgl = time.bulan
+const bulan = time.bulan
+const tahun = time.tahun
 
 export default defineConfig({
   globalSetup: "./setup/global_setup",
@@ -54,7 +60,7 @@ export default defineConfig({
   /* Configure projects for major browsers */
   projects: [
     {
-      name: "Regression 2026",
+      name: `Regression ${tgl}.${bulan}.${tahun}}`,
       use: { ...devices["Desktop Chrome"] },
     },
 
