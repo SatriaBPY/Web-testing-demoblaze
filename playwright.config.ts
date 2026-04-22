@@ -2,7 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 import { dateTimeExecution } from "./src/helper/utils";
 import { addAbortListener } from "node:stream";
 
-const time = await dateTimeExecution()
+const time = dateTimeExecution()
 const tgl = time.bulan
 const bulan = time.bulan
 const tahun = time.tahun

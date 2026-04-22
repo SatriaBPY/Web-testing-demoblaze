@@ -81,10 +81,10 @@ export async function saveJsonFile(data: any, pathFile: string) {
   }
 }
 
-export async function dateTimeExecution() {
+export function dateTimeExecution() {
   const date = new Date();
   const tahun = date.getFullYear();
-  const bulan = date.getMonth();
+  const bulan = date.getMonth() + 1;
   const tgl = date.getDay();
   
   return {tgl, bulan, tahun}
