@@ -28,7 +28,7 @@ export default defineConfig({
     // ["list"],
     // ["line", { printSteps: true }],
     // ['html', { open: 'always' }],
-    ["allure-playwright", { detail: false, suiteTitle: true, title: 'Regression 2026' }],
+    ["allure-playwright"],
   ],
   metadata: {
     browser: "chromium",

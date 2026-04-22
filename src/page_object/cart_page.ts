@@ -165,7 +165,6 @@ export default class CartPage extends BasePage {
     await this.waitForElementVisible(this.nameOfPurchase)
     await this.page.waitForTimeout(2000)
     await this.tap(this.confirmBtn)
-    await this.page.waitForTimeout(5000)
   }
   
 }

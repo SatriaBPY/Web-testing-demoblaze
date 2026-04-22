@@ -35,14 +35,37 @@ export function loadProductId(): ProductIdData {
   }
 }
 
-export async function deleteFolder(filePAth: string) {
+// export async function deleteFolder(filePAth: string) {
+//   try {
+//     if (!fs.existsSync(filePAth)) {
+//       console.log("Folder not found");
+//       return;
+//     }
+
+//     await fsx.rm(filePAth, { recursive: true, force: true, maxRetries: 3 });
+//   } catch (err) {
+//     console.error(err, "Skipping deletion");
+//   }
+// }
+
+export async function deleteFolder(filePath: string) {
   try {
-    if (!fs.existsSync(filePAth)) {
+    if (!fs.existsSync(filePath)) {
       console.log("Folder not found");
       return;
     }
 
-    await fsx.rm(filePAth, { recursive: true });
+    const files = fs.readdirSync(filePath);
+    for (const file of files) {
+      const currentPath = path.join(filePath, file);
+      if (fs.lstatSync(currentPath).isDirectory()) {
+        await deleteFolder(currentPath); 
+      } else {
+        fs.unlinkSync(currentPath); 
+      }
+    }
+    
+    await fsx.rm(filePath, { recursive: true, force: true, maxRetries: 3 });
   } catch (err) {
     console.error(err, "Skipping deletion");
   }
