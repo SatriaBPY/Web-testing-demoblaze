@@ -49,7 +49,7 @@ pipeline {
                             script: """
                                 curl -s -H "Accept: application/vnd.github+json" \
                                     -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-                                    "${GITHUB_API_URL}/actions/workflows/playwright-tests.yml/runs?per_page=1" \
+                                    "${GITHUB_API_URL}/actions/workflows/playwright-test.yml/runs?per_page=1" \
                                     | jq -r '.workflow_runs[0].id // empty'
                             """,
                             returnStdout: true
