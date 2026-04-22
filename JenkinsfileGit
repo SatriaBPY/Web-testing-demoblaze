@@ -1,6 +1,7 @@
 pipeline {
 agent any
 
+```
 environment {
     GITHUB_TOKEN = credentials('github-token-actions')
     GITHUB_OWNER = 'SatriaBPY'
@@ -10,93 +11,103 @@ environment {
 
 stages {
 
+    stage('Get Latest Run Number') {
+        steps {
+            script {
+                def beforeRunNumber = sh(
+                    script: """
+                        curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                        "${GITHUB_API_URL}/actions/workflows/playwright-test.yml/runs?per_page=1" \
+                        | jq -r '.workflow_runs[0].run_number // 0'
+                    """,
+                    returnStdout: true
+                ).trim()
+
+                env.BEFORE_RUN_NUMBER = beforeRunNumber
+                echo "Before run number: ${beforeRunNumber}"
+            }
+        }
+    }
+
     stage('Trigger GitHub Actions') {
         steps {
             script {
-                def triggerId = UUID.randomUUID().toString()
-                env.TRIGGER_ID = triggerId
-
-                echo "🚀 Triggering workflow with ID: ${triggerId}"
+                echo "🚀 Triggering workflow..."
 
                 sh """
                     curl -s -X POST \
                     -H "Accept: application/vnd.github+json" \
                     -H "Authorization: Bearer ${GITHUB_TOKEN}" \
                     ${GITHUB_API_URL}/actions/workflows/playwright-test.yml/dispatches \
-                    -d '{
-                        "ref":"main",
-                        "inputs":{
-                            "branch":"main",
-                            "trigger_id":"${triggerId}"
-                        }
-                    }'
+                    -d '{"ref":"main"}'
                 """
             }
         }
     }
 
-   stage('Wait & Validate Workflow') {
+    stage('Wait & Validate Workflow') {
         steps {
             script {
-                echo "⏳ Waiting for workflow run..."
-    
+                echo "⏳ Waiting for NEW workflow run..."
+
                 def runId = null
-    
-                // 1) Ambil run terbaru untuk workflow ini (by file name)
-                for (int i = 0; i < 30; i++) {
+
+                for (int i = 0; i < 60; i++) {
+
                     runId = sh(
-                        script: '''
-                            curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
-                            "$GITHUB_API_URL/actions/workflows/playwright-test.yml/runs?event=workflow_dispatch&per_page=1" \
-                            | jq -r '.workflow_runs[0].id // empty'
-                        ''',
+                        script: """
+                            curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                            "${GITHUB_API_URL}/actions/workflows/playwright-test.yml/runs?event=workflow_dispatch&per_page=5" \
+                            | jq -r '.workflow_runs[]
+                            | select(.run_number > ${env.BEFORE_RUN_NUMBER})
+                            | .id' | head -1
+                        """,
                         returnStdout: true
                     ).trim()
-    
+
                     if (runId) break
-    
-                    echo "⏳ Run belum muncul, retry..."
-                    sleep 3
+
+                    echo "⏳ Waiting new run..."
+                    sleep 5
                 }
-    
+
                 if (!runId) {
-                    error "❌ Tidak bisa menemukan run workflow"
+                    error "❌ Run baru tidak ditemukan"
                 }
-    
+
                 env.GITHUB_RUN_ID = runId
-                echo "✅ Found Run ID: ${runId}"
-    
-                // 2) Poll status sampai selesai
+                echo "✅ Found NEW Run ID: ${runId}"
+
                 for (int i = 0; i < 90; i++) {
-    
+
                     def result = sh(
-                        script: '''
-                            curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
-                            "$GITHUB_API_URL/actions/runs/$GITHUB_RUN_ID" \
+                        script: """
+                            curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                            "${GITHUB_API_URL}/actions/runs/${runId}" \
                             | jq -r '.status + "|" + (.conclusion // "pending")'
-                        ''',
+                        """,
                         returnStdout: true
                     ).trim()
-    
+
                     def parts = result.tokenize('|')
                     def status = parts[0]
                     def conclusion = parts.size() > 1 ? parts[1].trim() : "pending"
-    
+
                     echo "Status: ${status}, Conclusion: ${conclusion}"
-    
+
                     if (status == "completed") {
-    
+
                         if (conclusion != "success") {
                             error "❌ Test failed: ${conclusion}"
                         }
-    
+
                         echo "✅ Test passed"
                         return
                     }
-    
+
                     sleep 10
                 }
-    
+
                 error "❌ Timeout waiting workflow"
             }
         }
@@ -109,25 +120,20 @@ stages {
 
                 sh """
                     curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-                    "${GITHUB_API_URL}/actions/runs/${GITHUB_RUN_ID}/artifacts" \
+                    "${GITHUB_API_URL}/actions/runs/${env.GITHUB_RUN_ID}/artifacts" \
                     | jq -r '.artifacts[].archive_download_url' \
                     | while read url; do
-                        echo "Downloading artifact..."
                         curl -L -H "Authorization: Bearer ${GITHUB_TOKEN}" -o artifact.zip "$url"
                         unzip -o artifact.zip -d allure-results/
                         rm artifact.zip
                     done
                 """
-
-                sh "ls -la allure-results"
             }
         }
     }
 
 
-
-
-        stage('Publish Allure Report') {
+    stage('Publish Allure Report') {
             steps {
                 script {
                     echo "📊 Publishing Allure report..."
