@@ -4,7 +4,7 @@ pipeline {
     environment {
         // GitHub configuration
         GITHUB_TOKEN = credentials('github-token-actions')
-        GITHUB_OWNER = 'SatriaBPY'
+        GITHUB_OWNER = 'SatriaBPY'  
         GITHUB_REPO = 'Web-testing-demoblaze'
         GITHUB_API_URL = "https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}"
     }
@@ -14,7 +14,7 @@ pipeline {
             steps {
                 script {
                     echo "🚀 Triggering GitHub Actions workflow..."
-
+                    
                     // Trigger workflow via GitHub API
                     def response = sh(
                         script: """
@@ -26,23 +26,23 @@ pipeline {
                         """,
                         returnStdout: true
                     )
-
+                    
                     echo "✅ Workflow triggered successfully"
                     sleep time: 5, unit: 'SECONDS'  // Beri waktu workflow untuk start
                 }
             }
         }
-
+        
         stage('Wait for Workflow to Complete') {
             steps {
                 script {
                     echo "⏳ Waiting for workflow to complete..."
-
+                    
                     // Loop sampai workflow selesai (max 30 menit)
                     def maxRetries = 60  // 30 menit (30 detik per retry)
                     def workflowCompleted = false
                     def runId = null
-
+                    
                     for (int i = 0; i < maxRetries; i++) {
                         // Ambil run ID terbaru untuk workflow ini
                         def runs = sh(
@@ -54,10 +54,10 @@ pipeline {
                             """,
                             returnStdout: true
                         ).trim()
-
+                        
                         if (runs) {
                             runId = runs
-
+                            
                             // Cek status workflow
                             def status = sh(
                                 script: """
@@ -68,7 +68,7 @@ pipeline {
                                 """,
                                 returnStdout: true
                             ).trim()
-
+                            
                             def conclusion = sh(
                                 script: """
                                     curl -s -H "Accept: application/vnd.github+json" \
@@ -78,89 +78,82 @@ pipeline {
                                 """,
                                 returnStdout: true
                             ).trim()
-
+                            
                             echo "Run ID: ${runId}, Status: ${status}, Conclusion: ${conclusion}"
-
+                            
                             if (status == "completed") {
                                 workflowCompleted = true
                                 echo "✅ Workflow completed with conclusion: ${conclusion}"
                                 break
                             }
                         }
-
+                        
                         echo "Waiting... (${i+1}/${maxRetries})"
                         sleep time: 30, unit: 'SECONDS'
                     }
-
+                    
                     if (!workflowCompleted) {
                         error "Workflow did not complete within timeout"
                     }
-
+                    
                     // Simpan runId untuk stage berikutnya
                     env.GITHUB_RUN_ID = runId
                 }
             }
         }
-
+        
         stage('Download Allure Results') {
-    steps {
-        script {
-            echo "📥 Downloading artifacts from run ID: ${env.GITHUB_RUN_ID}"
-
-            // Bersihkan folder lama
-            sh "rm -rf ${WORKSPACE}/allure-results"
-            sh "mkdir -p ${WORKSPACE}/allure-results"
-
-            // Cari artifact URL
-            def artifactUrl = sh(
-                script: """
-                    curl -s -H "Accept: application/vnd.github+json" \
-                        -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-                        "${GITHUB_API_URL}/actions/runs/${env.GITHUB_RUN_ID}/artifacts" \
-                        | jq -r '.artifacts[] | select(.name | startswith("allure-results")) | .archive_download_url' \
-                        | head -1
-                """,
-                returnStdout: true
-            ).trim()
-
-            echo "Artifact URL: ${artifactUrl}"
-
-            if (artifactUrl && artifactUrl != "null") {
-                // Download artifact
-                sh """
-                    curl -L \
-                        -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-                        "${artifactUrl}" \
-                        -o ${WORKSPACE}/allure-results.zip
-                """
-
-                // Cek ukuran file
-                sh "ls -la ${WORKSPACE}/allure-results.zip"
-
-                // Extract zip ke folder yang benar
-                sh """
-                    unzip -o ${WORKSPACE}/allure-results.zip -d ${WORKSPACE}/allure-results-temp/
-                    cp -r ${WORKSPACE}/allure-results-temp/*/* ${WORKSPACE}/allure-results/ 2>/dev/null || true
-                    cp -r ${WORKSPACE}/allure-results-temp/* ${WORKSPACE}/allure-results/ 2>/dev/null || true
-                """
-
-                // Hapus file zip
-                sh "rm -f ${WORKSPACE}/allure-results.zip"
-                sh "rm -rf ${WORKSPACE}/allure-results-temp"
-            } else {
-                echo "⚠️ No artifacts found"
+                steps {
+                    script {
+                        echo "📥 Downloading artifacts using GitHub CLI..."
+                        
+                        sh "rm -rf ${WORKSPACE}/allure-results"
+                        sh "mkdir -p ${WORKSPACE}/allure-results"
+                        
+                        // Download artifact dengan gh
+                        sh """
+                            gh run download ${env.GITHUB_RUN_ID} \
+                                --repo ${GITHUB_OWNER}/${GITHUB_REPO} \
+                                --pattern 'allure-results-*' \
+                                --dir ${WORKSPACE}/
+                        """
+                        
+                        // Extract dan pindahkan file
+                        sh """
+                            find ${WORKSPACE}/ -name "allure-results-*.zip" -exec unzip -o {} -d ${WORKSPACE}/allure-results/ \\;
+                            # Extract nested zip jika ada
+                            find ${WORKSPACE}/allure-results/ -name "*.zip" -exec unzip -o {} -d ${WORKSPACE}/allure-results/ \\;
+                        """
+                        
+                        // Debug
+                        sh """
+                            echo "=== Hasil download ==="
+                            ls -la ${WORKSPACE}/allure-results/
+                        """
+                    }
+                }
+}
+        
+        stage('Publish Allure Report') {
+            steps {
+                script {
+                    echo "📊 Publishing Allure report..."
+                    
+                    // Pastikan folder ada
+                    sh "ls -la ${WORKSPACE}/allure-results/ || true"
+                    
+                    // Publish report
+                    allure commandline: 'allure-cli', 
+                           includeProperties: false, 
+                           jdk: '', 
+                           resultPolicy: 'LEAVE_AS_IS',
+                           results: [[path: 'allure-results']]
+                    
+                    echo "✅ Allure report published"
+                }
             }
-
-            // Debug: lihat isi folder
-            sh """
-                echo "=== Isi folder allure-results ==="
-                ls -la ${WORKSPACE}/allure-results/
-                echo "=== Jumlah file ==="
-                find ${WORKSPACE}/allure-results -type f | wc -l
-            """
         }
     }
-}
 
     post {
         always {
@@ -169,11 +162,11 @@ pipeline {
                 // Optional: archive results untuk debugging
             }
         }
-
+        
         success {
             echo "🎉 Pipeline completed successfully!"
         }
-
+        
         failure {
             echo "❌ Pipeline failed, but Allure report might still be available"
         }
