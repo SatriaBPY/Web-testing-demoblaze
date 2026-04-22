@@ -1,0 +1,183 @@
+pipeline {
+    agent any
+
+    environment {
+        // GitHub configuration
+        GITHUB_TOKEN = credentials('github-token-actions')
+        GITHUB_OWNER = 'SatriaBPY'  
+        GITHUB_REPO = 'Web-testing-demoblaze'
+        GITHUB_API_URL = "https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}"
+    }
+
+    stages {
+        stage('Trigger GitHub Actions Workflow') {
+            steps {
+                script {
+                    echo "🚀 Triggering GitHub Actions workflow..."
+                    
+                    // Trigger workflow via GitHub API
+                    def response = sh(
+                        script: """
+                            curl -s -X POST \
+                                -H "Accept: application/vnd.github+json" \
+                                -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                                ${GITHUB_API_URL}/actions/workflows/playwright-tests.yml/dispatches \
+                                -d '{"ref":"main", "inputs":{"branch":"main"}}'
+                        """,
+                        returnStdout: true
+                    )
+                    
+                    echo "✅ Workflow triggered successfully"
+                    sleep time: 5, unit: 'SECONDS'  // Beri waktu workflow untuk start
+                }
+            }
+        }
+        
+        stage('Wait for Workflow to Complete') {
+            steps {
+                script {
+                    echo "⏳ Waiting for workflow to complete..."
+                    
+                    // Loop sampai workflow selesai (max 30 menit)
+                    def maxRetries = 60  // 30 menit (30 detik per retry)
+                    def workflowCompleted = false
+                    def runId = null
+                    
+                    for (int i = 0; i < maxRetries; i++) {
+                        // Ambil run ID terbaru untuk workflow ini
+                        def runs = sh(
+                            script: """
+                                curl -s -H "Accept: application/vnd.github+json" \
+                                    -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                                    "${GITHUB_API_URL}/actions/workflows/playwright-tests.yml/runs?per_page=1" \
+                                    | jq -r '.workflow_runs[0].id // empty'
+                            """,
+                            returnStdout: true
+                        ).trim()
+                        
+                        if (runs) {
+                            runId = runs
+                            
+                            // Cek status workflow
+                            def status = sh(
+                                script: """
+                                    curl -s -H "Accept: application/vnd.github+json" \
+                                        -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                                        "${GITHUB_API_URL}/actions/runs/${runId}" \
+                                        | jq -r '.status'
+                                """,
+                                returnStdout: true
+                            ).trim()
+                            
+                            def conclusion = sh(
+                                script: """
+                                    curl -s -H "Accept: application/vnd.github+json" \
+                                        -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                                        "${GITHUB_API_URL}/actions/runs/${runId}" \
+                                        | jq -r '.conclusion // "pending"'
+                                """,
+                                returnStdout: true
+                            ).trim()
+                            
+                            echo "Run ID: ${runId}, Status: ${status}, Conclusion: ${conclusion}"
+                            
+                            if (status == "completed") {
+                                workflowCompleted = true
+                                echo "✅ Workflow completed with conclusion: ${conclusion}"
+                                break
+                            }
+                        }
+                        
+                        echo "Waiting... (${i+1}/${maxRetries})"
+                        sleep time: 30, unit: 'SECONDS'
+                    }
+                    
+                    if (!workflowCompleted) {
+                        error "Workflow did not complete within timeout"
+                    }
+                    
+                    // Simpan runId untuk stage berikutnya
+                    env.GITHUB_RUN_ID = runId
+                }
+            }
+        }
+        
+        stage('Download Allure Results') {
+            steps {
+                script {
+                    echo "📥 Downloading artifacts from run ID: ${env.GITHUB_RUN_ID}"
+                    
+                    // Bersihkan folder lama
+                    sh "rm -rf ${WORKSPACE}/allure-results"
+                    sh "mkdir -p ${WORKSPACE}/allure-results"
+                    
+                    // Download artifact menggunakan GitHub CLI
+                    sh """
+                        # Download artifact dengan gh (GitHub CLI)
+                        curl -L \
+                            -H "Accept: application/vnd.github+json" \
+                            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                            "${GITHUB_API_URL}/actions/runs/${env.GITHUB_RUN_ID}/artifacts" \
+                            | jq -r '.artifacts[] | select(.name | startswith("allure-results")) | .archive_download_url' \
+                            | head -1 \
+                            | xargs -I {} curl -L -H "Authorization: Bearer ${GITHUB_TOKEN}" -o ${WORKSPACE}/artifacts.zip {}
+                    """
+                    
+                    // Extract artifact
+                    sh """
+                        if [ -f ${WORKSPACE}/artifacts.zip ]; then
+                            unzip -o ${WORKSPACE}/artifacts.zip -d ${WORKSPACE}/
+                            rm ${WORKSPACE}/artifacts.zip
+                            echo "✅ Artifacts downloaded successfully"
+                        else
+                            echo "⚠️ No artifacts found, creating empty results"
+                            mkdir -p ${WORKSPACE}/allure-results
+                            echo '{"name":"no-tests","status":"skipped"}' > ${WORKSPACE}/allure-results/empty.json
+                        fi
+                    """
+                    
+                    // Debug: list files
+                    sh "ls -la ${WORKSPACE}/allure-results/"
+                }
+            }
+        }
+        
+        stage('Publish Allure Report') {
+            steps {
+                script {
+                    echo "📊 Publishing Allure report..."
+                    
+                    // Pastikan folder ada
+                    sh "ls -la ${WORKSPACE}/allure-results/ || true"
+                    
+                    // Publish report
+                    allure commandline: 'allure-cli', 
+                           includeProperties: false, 
+                           jdk: '', 
+                           resultPolicy: 'ALWAYS',
+                           results: [[path: 'allure-results']]
+                    
+                    echo "✅ Allure report published"
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            script {
+                echo "🧹 Cleaning up workspace..."
+                // Optional: archive results untuk debugging
+                archiveArtifacts artifacts: 'allure-results/**/*', allowEmptyArchive: true
+            }
+        }
+        
+        success {
+            echo "🎉 Pipeline completed successfully!"
+        }
+        
+        failure {
+            echo "❌ Pipeline failed, but Allure report might still be available"
+        }
+    }
+}
