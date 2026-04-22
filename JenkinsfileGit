@@ -84,12 +84,16 @@ stages {
 
                     if (status == "completed") {
 
-                        if (conclusion != "success") {
-                            error "❌ Test gagal: ${conclusion}"
+                        def cleanConclusion = conclusion?.trim()
+                    
+                        echo "Final Conclusion: ${cleanConclusion}"
+                    
+                        if (cleanConclusion != "success") {
+                            error "❌ Test failed: ${cleanConclusion}"
                         }
-
-                        echo "✅ Test berhasil"
-                        return
+                    
+                        echo "✅ Test passed"
+                        break
                     }
 
                     sleep 10
