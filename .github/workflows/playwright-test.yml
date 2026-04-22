@@ -1,57 +1,105 @@
 name: Playwright Tests
 
+# on:
+#   workflow_dispatch:
+#     inputs:
+#       branch:
+#         description: "Branch to test"
+#         required: true
+#         default: "main"
+#         type: string
+        
 on:
   workflow_dispatch:
     inputs:
       branch:
-        description: "Branch to test"
         required: true
-        default: "main"
-        type: string
+      trigger_id:
+        required: true
+
+# jobs:
+#   run-playwright-tests:
+#     name: Run Playwright Tests
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v4
+#         with:
+#           ref: ${{ github.event.inputs.branch }}
+
+#       - name: Create allure-results directory
+#         run: mkdir -p allure-results
+
+#       - name: Pull Docker image from Docker Hub
+#         run: docker pull sbpy/playwright-tests:latest
+
+#       - name: Run Playwright tests
+#         run: |
+#           docker run --rm \
+#                       -v ${{ github.workspace }}/allure-results:/app/allure-results \
+#                       -v ${{ github.workspace }}/tests:/app/tests \
+#                       -v ${{ github.workspace }}/src:/app/src \
+#                       -v ${{ github.workspace }}/setup:/app/setup \
+#                       -v ${{ github.workspace }}/reporter:/app/reporter \
+#                       -v ${{ github.workspace }}/playwright.config.ts:/app/playwright.config.ts \
+#                       sbpy/playwright-tests:latest \
+#         continue-on-error: true
+
+#       - name: List results (debugging)z
+#         run: ls -la allure-results/
+
+#       - name: Upload Allure Results as Artifact
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: allure-results-${{ github.run_id }}
+#           path: allure-results/
+#           retention-days: 7
+
+#       - name: Test status
+#         run: |
+#           if [ -d "allure-results" ] && [ "$(ls -A allure-results)" ]; then
+#             echo "✅ Tests completed with results"
+#           else
+#             echo "⚠️ No test results found"
+#           fi
 
 jobs:
-  run-playwright-tests:
-    name: Run Playwright Tests
+  run-tests:
+    name: Run - ${{ github.event.inputs.trigger_id }}
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Repo
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.branch }}
-
-      - name: Create allure-results directory
+    
+      - name: Prepare Allure Folder
         run: mkdir -p allure-results
-
-      - name: Pull Docker image from Docker Hub
+    
+      - name: Pull Docker Image
         run: docker pull sbpy/playwright-tests:latest
-
-      - name: Run Playwright tests
+    
+      - name: Run Playwright (Hybrid Mode)
         run: |
           docker run --rm \
-                      -v ${{ github.workspace }}/allure-results:/app/allure-results \
-                      -v ${{ github.workspace }}/tests:/app/tests \
-                      -v ${{ github.workspace }}/src:/app/src \
-                      -v ${{ github.workspace }}/setup:/app/setup \
-                      -v ${{ github.workspace }}/reporter:/app/reporter \
-                      -v ${{ github.workspace }}/playwright.config.ts:/app/playwright.config.ts \
-                      sbpy/playwright-tests:latest \
-        continue-on-error: true
-
-      - name: List results (debugging)
-        run: ls -la allure-results/
-
-      - name: Upload Allure Results as Artifact
+            -v ${{ github.workspace }}:/app \
+            sbpy/playwright-tests:latest
+    
+      - name: Debug Results
+        run: ls -la allure-results || true
+    
+      - name: Upload Allure Results
         uses: actions/upload-artifact@v4
         with:
-          name: allure-results-${{ github.run_id }}
+          name: allure-results-${{ github.run_id }}-${{ github.run_attempt }}
           path: allure-results/
-          retention-days: 7
-
+      
       - name: Test status
         run: |
-          if [ -d "allure-results" ] && [ "$(ls -A allure-results)" ]; then
-            echo "✅ Tests completed with results"
-          else
-            echo "⚠️ No test results found"
-          fi
+           if [ -d "allure-results" ] && [ "$(ls -A allure-results)" ]; then
+             echo "✅ Tests completed with results"
+           else
+             echo "⚠️ No test results found"
+           fi
