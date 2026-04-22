@@ -9,74 +9,74 @@ test.describe("Cart Page Test", () => {
     loginAs,
     detailProdcutPage,
   }) => {
-    await test.step("User add product to cart", async () => {
+    await test.step("Add product to cart", async () => {
       await loginAs("user");
       await cartPage.productCupture();
       await dashboard.clickProduct();
       await detailProdcutPage.addToCart();
     });
 
-    await test.step("User should navigate to cart page", async () => {
+    await test.step("Navigate to cart page", async () => {
       await dashboard.menu("Cart");
     });
 
-    await test.step("Title product should be same with click produc", async () => {
+    await test.step("Verify product title matches the selected product", async () => {
       await cartPage.productTitle();
     });
 
-    await test.step("Price product should be same with click produc", async () => {
+    await test.step("Verify product price matches the selected product", async () => {
       await cartPage.priceTitle();
     });
 
-    await test.step("Total price should be same with table", async () => {
+    await test.step("Verify total price matches the table calculation", async () => {
       await cartPage.totalPrices();
     });
 
-    await test.step("User should delete product", async () => {
+    await test.step("Remove product from cart", async () => {
       await cartPage.deleteProduct();
     });
   });
 
-  test("Should complate order", async ({
+  test("Should complete the checkout process", async ({
     page,
     cartPage,
     dashboard,
     cartServices,
     loginAs,
   }) => {
-    await test.step("User should navigate to place order page", async () => {
+    await test.step("Navigate to place order page", async () => {
       await loginAs("admin");
       await cartServices.addToCart();
       await dashboard.menu("Cart");
       await cartPage.placeOrder();
     });
 
-    await test.step("User Should fill name", async () => {
+    await test.step("Fill name", async () => {
       await cartPage.fillName("John Doe");
     });
 
-    await test.step("User Should fill country", async () => {
+    await test.step("Fill country", async () => {
       await cartPage.fillCountry("USA");
     });
 
-    await test.step("User Should fill city", async () => {
+    await test.step("Fill city", async () => {
       await cartPage.fillCity("New York");
     });
 
-    await test.step("User Should fill card", async () => {
+    await test.step("Fill card", async () => {
       await cartPage.fillCC("1234567890123456");
     });
 
-    await test.step("User Should fill month", async () => {
+    await test.step("Fill month", async () => {
       await cartPage.fillMonth("01");
     });
 
-    await test.step("User Should fill year", async () => {
+    await test.step("Fill year", async () => {
       await cartPage.fillYear("2023");
     });
 
-    await test.step("User Should click purchase", async () => {
-      await cartPage.cliclPurchase();
+    await test.step("Submit purchase and verify success message", async () => {
+      await cartPage.clicklPurchase();
       await cartPage.successMessage();
       await dashboard.menu("Cart");
     });

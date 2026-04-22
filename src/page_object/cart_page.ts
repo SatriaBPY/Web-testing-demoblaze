@@ -156,7 +156,7 @@ export default class CartPage extends BasePage {
     await this.fill(this.yearField, year)
   }
   
-  async cliclPurchase(): Promise<void> {
+  async clicklPurchase(): Promise<void> {
     await this.page.waitForTimeout(2000)
     await this.tap(this.purchaseBtn)
   }

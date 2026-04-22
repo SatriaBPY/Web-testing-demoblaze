@@ -8,25 +8,25 @@ test.describe('Contact Us Tests', () => {
     await contactPage.pages();
   })
   
-  test('User can Fill email form', async ({ contactPage }) => {
+  test('Should be able to fill the email field', async ({ contactPage }) => {
     await test.step('User should be able to fill email form', async () => {
       await contactPage.fillContactEmail('test@example.com')
     })
   });
   
-  test('User can Fill name form', async ({ contactPage }) => {
+  test('Should be able to fill the name field', async ({ contactPage }) => {
     await test.step('User should be able to fill name form', async () => {
       await contactPage.fillContactName('John Doe')
     })
   });
   
-  test('User can Fill message form', async ({ contactPage }) => {
+  test('Should be able to fill the message field', async ({ contactPage }) => {
     await test.step('User should be able to fill message form', async () => {
       await contactPage.fillContactMessage('Hello World')
     })
   });
   
-  test('User can Submit form', async ({ contactPage }) => {
+  test('Should be able to submit the contact form successfully', async ({ contactPage }) => {
     await test.step('User should be able to submit form', async () => {
       await contactPage.fillContactEmail('test@example.com')
       await contactPage.fillContactName('John Doe')
