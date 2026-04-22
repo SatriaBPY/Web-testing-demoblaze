@@ -152,9 +152,7 @@ pipeline {
         stage('Publish Allure Report') {
                 steps {
                     script {
-                        echo "📊 Publishing Allure report..."
-    
-                        sh "ls -la ${WORKSPACE}/allure-results/ || true"
+                        echo "📊 Publishing Allure report...
     
                         allure commandline: 'allure-cli',
                             includeProperties: false,
