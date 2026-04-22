@@ -50,18 +50,17 @@ RUN apt-get update && apt-get install -y \
     xdg-utils \
     && rm -rf /var/lib/apt/lists/*
 
+
 WORKDIR /app
 
-# Install deps terlebih dulu
 COPY package*.json ./
 RUN npm install
 
-# Install Playwright browser + deps
 RUN npx playwright install --with-deps chromium
 
-# Copy project
 COPY . .
 
-# Jalankan script dari ARG (mis. SCRIPT="test")
-CMD ["npx", "playwright", "test", "--reporter=line"]
+RUN mkdir -p /app/allure-results /app/src/data && chmod 777 /app/allure-results /app/src/data
+
+CMD bash -c "npx playwright test --reporter=line,allure-playwright; exit 0"
 
