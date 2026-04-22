@@ -31,20 +31,24 @@ stages {
     stage('Trigger GitHub Actions') {
         steps {
             script {
-                echo "🚀 Triggering workflow..."
+                def triggerId = UUID.randomUUID().toString()
+                env.TRIGGER_ID = triggerId
     
-                sh '''
-                    curl -s -X POST \
-                    -H "Accept: application/vnd.github+json" \
-                    -H "Authorization: Bearer $GITHUB_TOKEN" \
-                    "$GITHUB_API_URL/actions/workflows/playwright-test.yml/dispatches" \
+                echo "🚀 Triggering workflow with ID: ${triggerId}"
+    
+                sh """
+                    curl -s -X POST \\
+                    -H "Accept: application/vnd.github+json" \\
+                    -H "Authorization: Bearer ${GITHUB_TOKEN}" \\
+                    "${GITHUB_API_URL}/actions/workflows/playwright-test.yml/dispatches" \\
                     -d '{
                         "ref": "main",
                         "inputs": {
-                            "branch": "main"
+                            "branch": "main",
+                            "trigger_id": "${triggerId}"
                         }
                     }'
-                '''
+                """
             }
         }
     }
