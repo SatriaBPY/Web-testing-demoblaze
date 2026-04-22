@@ -38,7 +38,12 @@ stages {
                     -H "Accept: application/vnd.github+json" \
                     -H "Authorization: Bearer ${GITHUB_TOKEN}" \
                     ${GITHUB_API_URL}/actions/workflows/playwright-test.yml/dispatches \
-                    -d '{"ref":"main"}'
+                    -d '{
+                        "ref":"main",
+                        "inputs": {
+                            "branch": "main"
+                        }
+                    }'
                 """
             }
         }
