@@ -85,8 +85,12 @@ jobs:
         run: |
           docker run --rm \
             -v ${{ github.workspace }}:/app \
-            sbpy/playwright-tests:latest
-    
+            -w /app \
+            sbpy/playwright-tests:latest \
+            sh -c "
+              npm ci &&
+              npx playwright test
+            "
       - name: Debug Results
         run: ls -la allure-results || true
     
