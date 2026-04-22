@@ -44,7 +44,7 @@ pipeline {
                     def runId = null
 
                     for (int i = 0; i < maxRetries; i++) {
-                        // Ambil run ID terbaru untuk workflow ini
+                        
                         def runs = sh(
                             script: """
                                 curl -s -H "Accept: application/vnd.github+json" \
@@ -58,7 +58,7 @@ pipeline {
                         if (runs) {
                             runId = runs
 
-                            // Cek status workflow
+                           
                             def status = sh(
                                 script: """
                                     curl -s -H "Accept: application/vnd.github+json" \
@@ -96,7 +96,7 @@ pipeline {
                         error "Workflow did not complete within timeout"
                     }
 
-                    // Simpan runId untuk stage berikutnya
+                    
                     env.GITHUB_RUN_ID = runId
                 }
             }

@@ -29,8 +29,11 @@ jobs:
       - name: Run Playwright tests
         run: |
           docker run --rm \
-            -v ${{ github.workspace }}/allure-results:/app/allure-results \
-            sbpy/playwright-tests:latest
+                      -v ${{ github.workspace }}/allure-results:/app/allure-results \
+                      -v ${{ github.workspace }}/tests:/app/tests \
+                      -v ${{ github.workspace }}/src:/app/src \
+                      -v ${{ github.workspace }}/playwright.config.js:/app/playwright.config.js \
+                      sbpy/playwright-tests:latest \
         continue-on-error: true
 
       - name: List results (debugging)
